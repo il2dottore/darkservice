@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { fetchFeatures } from '@/services/admin/plans/plan.service'
 import { assignFeature, createMethod, deleteMethod, fetchMethods, removeFeature, updateMethod } from '@/services/admin/methods/method.service'
+import { differenceBy } from 'lodash-es'
 
 const key = ['admin', 'methods']
 export function AdminMethods() {
@@ -30,7 +31,7 @@ export function AdminMethods() {
   const dropFeature = useMutation({ mutationFn: (id: string) => removeFeature(selected!, id), onSuccess: invalidate })
   const method = methods.find((item) => item.id === selected)
   const featureName = (id: string) => features.find((feature) => feature.id === id)?.name ?? id
-  const available = features.filter((feature) => !method?.features.some((item) => item.id === feature.id))
+  const available = differenceBy(features, method?.features ?? [], 'id')
   return <>
     <Header fixed><Search className='me-auto' /><ThemeSwitch /><ConfigDrawer /><ProfileDropdown /></Header>
     <Main className='flex flex-1 flex-col gap-4 sm:gap-6'>

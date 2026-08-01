@@ -33,6 +33,7 @@ import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
+import { differenceBy } from 'lodash-es'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { fetchFeatures } from '@/services/admin/plans/plan.service'
 import {
@@ -170,12 +171,12 @@ export function AdminNetworks() {
 
   /* ── helpers ── */
   const assignedServers = networkDetail?.servers ?? []
-  const assignedServerIds = new Set(assignedServers.map((s) => s.id))
-  const availableServers = (allServers ?? []).filter(
-    (s) => !assignedServerIds.has(s.id)
+  const availableServers = differenceBy(allServers ?? [], assignedServers, 'id')
+  const availableFeatures = differenceBy(
+    allFeatures,
+    networkFeatures.map(({ featureId }) => ({ id: featureId })),
+    'id'
   )
-  const assignedFeatureIds = new Set(networkFeatures.map((item) => item.featureId))
-  const availableFeatures = allFeatures.filter((feature) => !assignedFeatureIds.has(feature.id))
   const featureName = (id: string) => allFeatures.find((feature) => feature.id === id)?.name ?? id
   const filteredServers = availableServers
 

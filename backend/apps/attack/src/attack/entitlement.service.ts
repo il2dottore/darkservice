@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js/driver';
 import { methodsFeaturesTable } from '../entities/method.entity';
 import { POSTGRES } from '@app/database/postgresql/postgresql.module';
+import { maxBy, uniq } from 'lodash';
 
 @Injectable()
 export class EntitlementService {
@@ -54,8 +55,15 @@ export class EntitlementService {
     const plans = body.data?.plans ?? [];
 
     return {
-      maxConcurrents: Math.max(...plans.map((plan) => plan.maxConcurrents), 0),
-      maxDuration: Math.max(...plans.map((plan) => plan.maxDuration), 0),
+      maxConcurrents: Math.max(
+        0,
+        maxBy(plans, ({ maxConcurrents }) => maxConcurrents)?.maxConcurrents ??
+          0,
+      ),
+      maxDuration: Math.max(
+        0,
+        maxBy(plans, ({ maxDuration }) => maxDuration)?.maxDuration ?? 0,
+      ),
     };
   }
 
@@ -68,12 +76,10 @@ export class EntitlementService {
     const profile = (await response.json()) as {
       plans?: { planFeatures?: { id: string }[] }[];
     };
-    return [
-      ...new Set(
-        profile.plans?.flatMap(
-          (plan) => plan.planFeatures?.map(({ id }) => id) ?? [],
-        ) ?? [],
-      ),
-    ];
+    return uniq(
+      profile.plans?.flatMap(
+        (plan) => plan.planFeatures?.map(({ id }) => id) ?? [],
+      ) ?? [],
+    );
   }
 }

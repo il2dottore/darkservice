@@ -5,6 +5,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { compact, intersection } from 'lodash';
 import { ROLE_METADATA_KEY } from '../decorators/role.decorator';
 
 type AuthenticatedRequest = {
@@ -30,10 +31,10 @@ export class RolesGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const userRoles =
-      request.user?.details?.roles?.map((role) => role.key).filter(Boolean) ??
-      [];
-    const hasRole = requiredRoles.some((role) => userRoles.includes(role));
+    const userRoles = compact(
+      request.user?.details?.roles?.map((role) => role.key),
+    );
+    const hasRole = intersection(requiredRoles, userRoles).length > 0;
 
     if (!hasRole) {
       throw new ForbiddenException(

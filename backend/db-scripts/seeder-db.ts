@@ -16,6 +16,7 @@ import {
 import { featureEntity } from '../apps/common/src/entities/feature.entity';
 import { planFeatureEntity } from '../apps/common/src/entities/plan-feature.entity';
 import { PermissionEnum } from '../apps/common/src/permission/enums/permission.enum';
+import { keyBy } from 'lodash';
 
 const coreDatabase = process.env.CORE_SERVICE_DB ?? 'core_service_db';
 const attackDatabase = process.env.ATTACK_SERVICE_DB ?? 'attack_service_db';
@@ -227,16 +228,11 @@ async function usersRolesTableSeeder() {
   const users = await debugCoreDb.select().from(userEntity);
   const roles = await debugCoreDb.select().from(roleEntity);
 
-  const userRole = roles.find((role) => role.key === (RoleEnum.USER as string));
-  const supportRole = roles.find(
-    (role) => role.key === (RoleEnum.SUPPORT as string),
-  );
-  const managerRole = roles.find(
-    (role) => role.key === (RoleEnum.MANAGER as string),
-  );
-  const adminRole = roles.find(
-    (role) => role.key === (RoleEnum.ADMINISTRATOR as string),
-  );
+  const rolesByKey = keyBy(roles, 'key');
+  const userRole = rolesByKey[RoleEnum.USER];
+  const supportRole = rolesByKey[RoleEnum.SUPPORT];
+  const managerRole = rolesByKey[RoleEnum.MANAGER];
+  const adminRole = rolesByKey[RoleEnum.ADMINISTRATOR];
 
   if (!userRole || !supportRole || !managerRole || !adminRole) {
     throw new Error('Required roles were not seeded correctly');
@@ -334,7 +330,7 @@ async function plansFeaturesTableSeeder() {
 
   const plans = await debugCoreDb.select().from(planEntity);
   const features = await debugCoreDb.select().from(featureEntity);
-  const featureIds = new Set(features.map((feature) => feature.id));
+  const featuresById = keyBy(features, 'id');
 
   const featureAssignments: Record<string, FeatureEnum[]> = {
     Free: [],
@@ -350,7 +346,7 @@ async function plansFeaturesTableSeeder() {
 
   const planFeatures = plans.flatMap((plan) =>
     (featureAssignments[plan.name] ?? []).map((featureId) => {
-      if (!featureIds.has(featureId)) {
+      if (!featuresById[featureId]) {
         throw new Error(`Feature ${featureId} was not seeded correctly`);
       }
 
@@ -373,18 +369,19 @@ async function usersPlansTableSeeder() {
 
   const users = await debugCoreDb.select().from(userEntity);
   const plans = await debugCoreDb.select().from(planEntity);
+  const plansByName = keyBy(plans, 'name');
 
   const userPlanAssignments = users.map((user, index) => {
     const plan =
       index === 0
-        ? plans.find((item) => item.name === 'Business')
+        ? plansByName.Business
         : index <= 2
-          ? plans.find((item) => item.name === 'Pro')
+          ? plansByName.Pro
           : index <= 5
-            ? plans.find((item) => item.name === 'Plus')
+            ? plansByName.Plus
             : index <= 7
-              ? plans.find((item) => item.name === 'Basic')
-              : plans.find((item) => item.name === 'Free');
+              ? plansByName.Basic
+              : plansByName.Free;
 
     if (!plan) {
       throw new Error('Required plans were not seeded correctly');

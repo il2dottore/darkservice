@@ -1,3 +1,4 @@
+import { max } from 'lodash-es'
 import {
   Card,
   CardContent,
@@ -160,11 +161,11 @@ function SimpleBarList({
   valueFormatter: (n: number) => string
   barClass: string
 }) {
-  const max = Math.max(...items.map((i) => i.value), 1)
+  const maxValue = Math.max(1, max(items.map((i) => i.value)) ?? 0)
   return (
     <ul className='space-y-3'>
       {items.map((i) => {
-        const width = `${Math.round((i.value / max) * 100)}%`
+        const width = `${Math.round((i.value / maxValue) * 100)}%`
         return (
           <li key={i.name} className='flex items-center justify-between gap-3'>
             <div className='min-w-0 flex-1'>

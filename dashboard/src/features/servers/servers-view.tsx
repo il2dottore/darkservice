@@ -7,6 +7,7 @@ import {
 import { fetchServerStatuses } from '@/services/admin/networks/server-status.service'
 import { fetchFeatures } from '@/services/admin/plans/plan.service'
 import { useAuthStore } from '@/store/auth.store'
+import { keyBy } from 'lodash-es'
 import { Server as ServerIcon } from 'lucide-react'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -30,12 +31,7 @@ export function Servers() {
     queryFn: fetchServerStatuses,
     refetchInterval: 15000,
   })
-  const statuses = new Map(
-    statusQuery.data?.map((status) => [status.id, status.online])
-  )
-  const statusDetails = new Map(
-    statusQuery.data?.map((status) => [status.id, status])
-  )
+  const statusDetails = keyBy(statusQuery.data ?? [], 'id')
   const detailsQuery = useQuery({
     queryKey: ['servers', 'details', networksQuery.data?.map(({ id }) => id)],
     enabled: Boolean(networksQuery.data),
@@ -132,7 +128,7 @@ export function Servers() {
                                   100,
                                   Math.max(
                                     0,
-                                    statusDetails.get(server.id)?.[metric] ?? 0
+                                    statusDetails[server.id]?.[metric] ?? 0
                                   )
                                 )
                                 return (
@@ -163,22 +159,24 @@ export function Servers() {
                                     (_, index) => (
                                       <span
                                         key={index}
-                                        className={`h-2 flex-1 rounded-sm ${index < (statusDetails.get(server.id)?.active ?? 0) ? 'bg-primary' : 'bg-muted'}`}
+                                        className={`h-2 flex-1 rounded-sm ${index < (statusDetails[server.id]?.active ?? 0) ? 'bg-primary' : 'bg-muted'}`}
                                       />
                                     )
                                   )}
                                 </div>
                                 <span className='w-8 text-right'>
-                                  {statusDetails.get(server.id)?.active ?? 0}/
+                                  {statusDetails[server.id]?.active ?? 0}/
                                   {server.slots}
                                 </span>
                               </div>
                             </div>
                           </div>
                           <span
-                            className={`ml-auto text-xs ${statuses.get(server.id) ? 'text-emerald-600' : 'text-muted-foreground'}`}
+                            className={`ml-auto text-xs ${statusDetails[server.id]?.online ? 'text-emerald-600' : 'text-muted-foreground'}`}
                           >
-                            {statuses.get(server.id) ? 'Online' : 'Offline'}
+                            {statusDetails[server.id]?.online
+                              ? 'Online'
+                              : 'Offline'}
                           </span>
                         </div>
                       ))

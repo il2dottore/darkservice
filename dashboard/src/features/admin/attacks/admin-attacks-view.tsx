@@ -7,6 +7,7 @@ import {
   stopAttack,
   type Attack,
 } from '@/services/attack/attack.service'
+import { keyBy, mapValues } from 'lodash-es'
 import { ChevronLeft, ChevronRight, Square } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
@@ -43,14 +44,11 @@ export function AdminAttacks() {
     onSuccess: () =>
       client.invalidateQueries({ queryKey: ['admin', 'attacks'] }),
   })
-  const userName = new Map(
-    users.data?.map(({ user }) => [user.id, user.username]) ?? []
-  )
-  const serverName = new Map(
-    servers.data?.map((server) => [
-      server.id,
-      `${server.name ?? `Server #${server.id}`} · ${server.address ?? 'IP unavailable'}`,
-    ]) ?? []
+  const userName = keyBy(users.data?.map(({ user }) => user) ?? [], 'id')
+  const serverName = mapValues(
+    keyBy(servers.data ?? [], 'id'),
+    (server) =>
+      `${server.name ?? `Server #${server.id}`} · ${server.address ?? 'IP unavailable'}`
   )
   const sorted = useMemo(
     () =>
@@ -117,12 +115,12 @@ export function AdminAttacks() {
                         {attack.target}
                       </span>
                       <span className='truncate'>
-                        {userName.get(attack.userId ?? '') ??
+                        {userName[attack.userId ?? '']?.username ??
                           attack.userId ??
                           'Unknown'}
                       </span>
                       <span className='truncate'>
-                        {serverName.get(attack.serverId ?? -1) ?? 'Unknown'}
+                        {serverName[attack.serverId ?? -1] ?? 'Unknown'}
                       </span>
                       <span>{attack.duration}s</span>
                       <span className='space-y-1'>

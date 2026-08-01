@@ -4,6 +4,7 @@ import { CreatePlanDto } from './dtos/create-plan.dto';
 import { UpdatePlanDto } from './dtos/update-plan.dto';
 import { PlanRepository } from './plan.repository';
 import { Plan } from '../entities/plan.entity';
+import { compact, groupBy } from 'lodash';
 
 @Injectable()
 export class PlanService {
@@ -19,16 +20,18 @@ export class PlanService {
 
   async batch(ids: number[]) {
     const rows = await this.planRepository.queryPlansInfo(ids);
-    const plans = new Map<number, { plan: Plan; features: any[] }>();
-    for (const row of rows) {
-      const entry = plans.get(row.plans.id) ?? {
-        plan: row.plans,
-        features: [],
-      };
-      if (row.features) entry.features.push(row.features);
-      plans.set(row.plans.id, entry);
-    }
-    return ids.flatMap((id) => (plans.has(id) ? [plans.get(id)!] : []));
+    const grouped = groupBy(rows, ({ plans }) => plans.id);
+    return compact(
+      ids.map((id) => {
+        const planRows = grouped[id];
+        if (!planRows?.length) return null;
+
+        return {
+          plan: planRows[0].plans,
+          features: compact(planRows.map(({ features }) => features)),
+        };
+      }),
+    );
   }
 
   async create(createPlanDto: CreatePlanDto): Promise<Plan> {

@@ -5,6 +5,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { compact, intersection } from 'lodash';
 import { PERMISSION_METADATA_KEY } from '../decorators/permission.decorator';
 
 type AuthenticatedRequest = {
@@ -30,13 +31,13 @@ export class PermissionsGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const userPermissions =
-      request.user?.details?.roles_permissions
-        ?.map((permission) => permission.permission_id)
-        .filter(Boolean) ?? [];
-    const hasPermission = requiredPermissions.some((permission) =>
-      userPermissions.includes(permission),
+    const userPermissions = compact(
+      request.user?.details?.roles_permissions?.map(
+        (permission) => permission.permission_id,
+      ),
     );
+    const hasPermission =
+      intersection(requiredPermissions, userPermissions).length > 0;
 
     if (!hasPermission) {
       throw new ForbiddenException(

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Plan } from '@/services/admin/plans/types'
+import { differenceBy } from 'lodash-es'
 import { Loader2, Package, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { handleServerError } from '@/lib/handle-server-error'
 import { Badge } from '@/components/ui/badge'
@@ -108,9 +109,10 @@ export function AdminPlans() {
 
   /* ── helpers ── */
   const assignedFeatures = planDetail?.features ?? []
-  const assignedFeatureIds = new Set(assignedFeatures.map((f) => f.id))
-  const availableFeatures = (allFeatures ?? []).filter(
-    (f) => !assignedFeatureIds.has(f.id)
+  const availableFeatures = differenceBy(
+    allFeatures ?? [],
+    assignedFeatures,
+    'id'
   )
 
   /* ── handlers ── */

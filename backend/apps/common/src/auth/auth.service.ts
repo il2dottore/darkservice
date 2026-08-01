@@ -18,6 +18,7 @@ import { UserService } from '../user/user.service';
 import { ConfigService } from '@nestjs/config';
 import { User } from '../entities/user.entity';
 import { MailService } from './mail.service';
+import { compact } from 'lodash';
 
 @Injectable()
 export class AuthService {
@@ -268,7 +269,7 @@ export class AuthService {
         }
       }),
     );
-    return sessions.filter(Boolean) as SessionResponse[];
+    return compact(sessions);
   }
   private hashToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');

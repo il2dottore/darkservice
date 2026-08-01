@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { fetchPlans } from '@/services/admin/plans/plan.service'
 import { createPayment } from '@/services/payment/payment.service'
 import { useAuthStore } from '@/store/auth.store'
+import { max } from 'lodash-es'
 import { Check, CreditCard, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -25,7 +26,10 @@ export function Plans() {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.auth.user)
   const currentPlans = user?.plans ?? []
-  const currentPrice = Math.max(0, ...currentPlans.map((plan) => plan.price))
+  const currentPrice = Math.max(
+    0,
+    max(currentPlans.map((plan) => plan.price)) ?? 0
+  )
   const { data: plans, isLoading } = useQuery({
     queryKey: ['plans', 'list'],
     queryFn: fetchPlans,

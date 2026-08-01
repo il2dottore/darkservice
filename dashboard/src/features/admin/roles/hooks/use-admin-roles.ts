@@ -12,6 +12,7 @@ import {
   updatePermission,
   updateRole,
 } from '@/services/admin/roles/role.service'
+import { compact, uniq } from 'lodash-es'
 
 /* ───── Roles ───── */
 
@@ -30,12 +31,10 @@ export function useRoleByKey(roleKey: string | null) {
     queryFn: () => fetchRoleByKey(roleKey!),
     enabled: roleKey !== null,
     select: (data) => {
-      const perms = data
-        .map((row) => row.permissions?.key)
-        .filter((p): p is string => !!p)
+      const perms = compact(data.map((row) => row.permissions?.key))
       return {
         role: data[0]?.roles ?? null,
-        permissionIds: [...new Set(perms)],
+        permissionIds: uniq(perms),
       }
     },
   })

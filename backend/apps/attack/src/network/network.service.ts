@@ -4,6 +4,7 @@ import { CreateNetworkDto } from './dtos/create-network.dto';
 import { UpdateNetworkDto } from './dtos/update-network.dto';
 import { Network } from '../entities/network.entity';
 import { NetworkRepository } from './network.repository';
+import { compact, uniqBy } from 'lodash';
 
 @Injectable()
 export class NetworkService {
@@ -16,13 +17,7 @@ export class NetworkService {
   async getById(id: number) {
     const rows = await this.networkRepository.queryNetworkInfo(id);
     const network = rows[0]?.networks ?? null;
-    const servers = rows
-      .map(({ servers }) => servers)
-      .filter((server): server is NonNullable<typeof server> => server !== null)
-      .filter(
-        (server, index, allServers) =>
-          allServers.findIndex(({ id }) => id === server.id) === index,
-      );
+    const servers = uniqBy(compact(rows.map(({ servers }) => servers)), 'id');
 
     return { network, servers };
   }

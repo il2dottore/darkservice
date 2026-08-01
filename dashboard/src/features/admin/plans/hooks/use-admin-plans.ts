@@ -12,6 +12,7 @@ import {
   updateFeature,
   updatePlan,
 } from '@/services/admin/plans/plan.service'
+import { compact, uniqBy } from 'lodash-es'
 
 /* ───── Plans ───── */
 
@@ -30,10 +31,8 @@ export function usePlanById(id: number | null) {
     queryFn: () => fetchPlanById(id!),
     enabled: id !== null,
     select: (data) => {
-      const ftrs = data
-        .map((row) => row.features)
-        .filter((f): f is NonNullable<typeof f> => f !== null)
-      return { plan: data[0]?.plans ?? null, features: [...new Map(ftrs.map((f) => [f.id, f])).values()] }
+      const features = compact(data.map((row) => row.features))
+      return { plan: data[0]?.plans ?? null, features: uniqBy(features, 'id') }
     },
   })
 }

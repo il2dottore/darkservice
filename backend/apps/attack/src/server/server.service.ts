@@ -4,6 +4,7 @@ import { UpdateServerDto } from './dtos/update-server.dto';
 import { ServerRepository } from './server.repository';
 import { Server } from '../entities/server.entity';
 import { RedisService } from '@app/redis/redis.service';
+import { compact, groupBy, uniqBy } from 'lodash';
 
 @Injectable()
 export class ServerService {
@@ -74,15 +75,7 @@ export class ServerService {
       return null;
     }
 
-    const networks = rows
-      .map((row) => row.networks)
-      .filter((network): network is NonNullable<typeof network> =>
-        Boolean(network),
-      )
-      .filter(
-        (network, index, list) =>
-          list.findIndex((item) => item.id === network.id) === index,
-      );
+    const networks = uniqBy(compact(rows.map((row) => row.networks)), 'id');
 
     return {
       ...firstRow.servers,
@@ -96,19 +89,14 @@ export class ServerService {
 
   async getAllDetails() {
     const rows = await this.serverRepository.queryServersInfo();
-    const grouped = new Map<number, typeof rows>();
+    const grouped = groupBy(rows, (row) => row.servers.id);
+    const firstRows = uniqBy(rows, (row) => row.servers.id);
 
-    for (const row of rows) {
-      const currentRows = grouped.get(row.servers.id) ?? [];
-      currentRows.push(row);
-      grouped.set(row.servers.id, currentRows);
-    }
-
-    return Array.from(grouped.values())
-      .map((serverRows) => this.mapServerWithNetworks(serverRows))
-      .filter((server): server is NonNullable<typeof server> =>
-        Boolean(server),
-      );
+    return compact(
+      firstRows.map(({ servers }) =>
+        this.mapServerWithNetworks(grouped[servers.id]),
+      ),
+    );
   }
 
   async getById(id: number) {

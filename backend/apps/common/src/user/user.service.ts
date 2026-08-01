@@ -5,6 +5,7 @@ import { UserDetails } from './dtos/responses/user-details';
 import type { User } from '../entities/user.entity';
 import { CreateUserDto } from './dtos/requests/create-user.dto';
 import { UpdateUserDto } from './dtos/requests/update-user.dto';
+import { compact, groupBy, uniqBy } from 'lodash';
 
 @Injectable()
 export class UserService {
@@ -24,55 +25,45 @@ export class UserService {
 
     const userDetails = new UserDetails();
     userDetails.user = user;
-    userDetails.roles = [];
-    userDetails.roles_permissions = [];
-    userDetails.plans = [];
-
-    for (const row of rows) {
-      if (
-        row.roles &&
-        !userDetails.roles.find((role) => role.key === row.roles!.key)
-      ) {
-        userDetails.roles.push({
-          key: row.roles.key,
-          displayName: row.roles.displayName,
-          description: row.roles.description,
-        });
-      }
-
-      if (
-        row.roles_permissions &&
-        !userDetails.roles_permissions.find(
-          (permission) =>
-            permission.permission_id === row.roles_permissions!.permissionKey,
-        )
-      ) {
-        userDetails.roles_permissions.push({
-          permission_id: row.roles_permissions.permissionKey,
-        });
-      }
-
-      if (row.plans) {
-        let plan = userDetails.plans.find(
-          (currentPlan) => currentPlan.id === row.plans!.id,
-        );
-
-        if (!plan) {
-          plan = {
-            ...row.plans,
-            plan_features: [],
-          };
-          userDetails.plans.push(plan);
-        }
-
-        if (
-          row.features &&
-          !plan.plan_features.some((feature) => feature.id === row.features!.id)
-        ) {
-          plan.plan_features.push(row.features);
-        }
-      }
-    }
+    userDetails.roles = uniqBy(
+      compact(
+        rows.map(({ roles }) =>
+          roles
+            ? {
+                key: roles.key,
+                displayName: roles.displayName,
+                description: roles.description,
+              }
+            : null,
+        ),
+      ),
+      'key',
+    );
+    userDetails.roles_permissions = uniqBy(
+      compact(
+        rows.map(({ roles_permissions }) =>
+          roles_permissions
+            ? { permission_id: roles_permissions.permissionKey }
+            : null,
+        ),
+      ),
+      'permission_id',
+    );
+    const planRows = compact(
+      rows.map(({ plans, features }) =>
+        plans ? { plan: plans, feature: features } : null,
+      ),
+    );
+    const plansById = groupBy(planRows, ({ plan }) => plan.id);
+    userDetails.plans = uniqBy(planRows, ({ plan }) => plan.id).map(
+      ({ plan }) => ({
+        ...plan,
+        plan_features: uniqBy(
+          compact(plansById[plan.id].map(({ feature }) => feature)),
+          'id',
+        ),
+      }),
+    );
 
     return userDetails;
   }

@@ -1,8 +1,0 @@
-.git
-.github
-.env
-.env.*
-*.exe
-*.test
-*.prof
-README.md

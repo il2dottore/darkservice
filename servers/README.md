@@ -27,7 +27,7 @@ The initialization script reads `POSTGRES_MULTIPLE_DATABASES` and creates `core_
 
 ## Configuration
 
-The Compose file currently contains checked-in development credentials for PostgreSQL and RabbitMQ. Change them before using this stack on a shared host, then update `backend/.env`, `attack-node-router/.env`, and `attack-node-service/.env` to match.
+The Compose file currently contains checked-in development credentials for PostgreSQL and RabbitMQ. Change them before using this stack on a shared host, then update `backend/.env` and `attack-node-service/.env` to match.
 
 Do not publish database, cache, AMQP, or management ports to untrusted networks.
 

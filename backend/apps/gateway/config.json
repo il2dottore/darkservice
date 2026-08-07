@@ -1,0 +1,22 @@
+{
+  "modules": {
+    "auth": "http://localhost:3000/api/v1/auth",
+    "users": "http://localhost:3000/api/v1/users",
+    "roles": "http://localhost:3000/api/v1/roles",
+    "permissions": "http://localhost:3000/api/v1/permissions",
+    "features": "http://localhost:3000/api/v1/features",
+    "news": "http://localhost:3000/api/v1/news",
+    "plans": "http://localhost:3000/api/v1/plans",
+    "tickets": "http://localhost:3000/api/v1/tickets",
+    "attacks": "http://localhost:4000/api/v1/attacks",
+    "methods": "http://localhost:4000/api/v1/methods",
+    "networks": "http://localhost:4000/api/v1/networks",
+    "servers": "http://localhost:4000/api/v1/servers",
+    "payments": "http://localhost:5000/api/v1/payments"
+  },
+  "sockets": {
+    "/socket.io/common": "http://localhost:3000",
+    "/socket.io/attack": "http://localhost:4000",
+    "/socket.io/payment": "http://localhost:5000"
+  }
+}

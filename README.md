@@ -1,6 +1,6 @@
 # LoadService
 
-LoadService is a distributed platform for authorized load and resilience testing. It combines a React operations dashboard, three NestJS domain services, a Go REST gateway, a RabbitMQ-based node router, and Go workers that execute configured benchmark commands.
+LoadService is a distributed platform for authorized load and resilience testing. It combines a React operations dashboard, five NestJS services, and Go workers that execute configured benchmark commands.
 
 Only run tests against systems you own or are explicitly authorized to test.
 
@@ -31,9 +31,7 @@ Only run tests against systems you own or are explicitly authorized to test.
 | Directory | Responsibility |
 |---|---|
 | [`dashboard`](dashboard/) | React/Vite user and administration dashboard |
-| [`backend`](backend/) | NestJS monorepo containing Common, Attack, and Payment services |
-| [`api-gateway`](api-gateway/) | Go reverse proxy for REST routes under `/api/v1/...` |
-| [`attack-node-router`](attack-node-router/) | RabbitMQ consumer that selects a healthy worker and dispatches a benchmark |
+| [`backend`](backend/) | NestJS monorepo containing Common, Attack, Payment, Gateway, and Node Router services |
 | [`attack-node-service`](attack-node-service/) | Go worker that runs allow-listed Layer 4 and Layer 7 command templates |
 | [`servers`](servers/) | Docker Compose stack for PostgreSQL, Redis, and RabbitMQ |
 | [`images`](images/) | Screenshots used by this README |
@@ -43,7 +41,7 @@ Only run tests against systems you own or are explicitly authorized to test.
 
 ```mermaid
 flowchart LR
-    UI[Dashboard :5173] -->|REST /api/v1| GW[Go API Gateway :8080]
+    UI[Dashboard :5173] -->|REST /api/v1| GW[NestJS API Gateway :8080]
     UI -->|Socket.IO| C
     UI -->|Socket.IO| A
     UI -->|Socket.IO| P
@@ -95,8 +93,6 @@ Each runnable component has its own `.env.example`:
 ```text
 backend/.env.example
 dashboard/.env.example
-api-gateway/.env.example
-attack-node-router/.env.example
 attack-node-service/.env.example
 ```
 
@@ -106,10 +102,10 @@ Important relationships:
 
 - `dashboard/VITE_API_URL` must point to the gateway, normally `http://localhost:8080/api/v1`.
 - Dashboard Socket.IO URLs point to the API gateway; transport paths select Common, Attack, or Payment upstreams.
-- `api-gateway/config.json` must contain upstream URLs reachable from the gateway process.
+- `backend/apps/gateway/config.json` must contain upstream URLs reachable from the gateway process.
 - `COMMON_SERVICE_URL`, `ATTACK_SERVICE_URL`, and `PAYMENT_SERVICE_URL` are direct service-to-service URLs.
-- `RABBITMQ_*_QUEUE` names must match across the backend, router, and worker.
-- `attack-node-router/ATTACK_NODE_PORT` must equal `attack-node-service/LISTEN_PORT`.
+- `RABBITMQ_*_QUEUE` names must match across the backend and worker.
+- `backend/ATTACK_NODE_PORT` must equal `attack-node-service/LISTEN_PORT`.
 - Server addresses seeded or created in the Attack service must be reachable from the router.
 
 The example files contain development values only. Review database and RabbitMQ credentials before exposing any service outside a trusted network.
@@ -138,7 +134,7 @@ pnpm db:reset
 
 `db:reset` is destructive: it drops and recreates the configured core, attack, and payment schemas, then seeds core and attack data. For an existing database, run only the required `pnpm db:migrate*` commands.
 
-### 3. Start the three backend services
+### 3. Start the backend services
 
 Run these commands in separate terminals from `backend`:
 
@@ -146,6 +142,8 @@ Run these commands in separate terminals from `backend`:
 pnpm dev:common
 pnpm dev:attack
 pnpm dev:payment
+pnpm dev:gateway
+pnpm dev:node-router
 ```
 
 | Service | REST URL | Swagger | Socket.IO namespace |
@@ -153,22 +151,13 @@ pnpm dev:payment
 | Common | `http://localhost:3000/api/v1` | `http://localhost:3000/api-docs` | `/tickets` |
 | Attack | `http://localhost:4000/api/v1` | `http://localhost:4000/api-docs` | `/events` |
 | Payment | `http://localhost:5000/api/v1` | `http://localhost:5000/api-docs` | `/payments` |
-
-### 4. Start the API gateway
-
-Update `api-gateway/config.json` for the three local upstream URLs, then run:
-
-```bash
-cd api-gateway
-cp .env.example .env
-go run .
-```
+| Gateway | `http://localhost:8080/api/v1` | — | Gateway transport paths |
 
 The default external REST base URL is `http://localhost:8080/api/v1`.
 
-### 5. Start an attack node and its router
+### 4. Start an attack node
 
-Make `attack-node-router/ATTACK_NODE_PORT` and `attack-node-service/LISTEN_PORT` identical. Run the worker on the address registered in the Attack database:
+Make `backend/ATTACK_NODE_PORT` and `attack-node-service/LISTEN_PORT` identical. Run the worker on the address registered in the Attack database. The `node-router` service is started with the other backend services above:
 
 ```bash
 cd attack-node-service
@@ -176,17 +165,9 @@ cp .env.example .env
 go run .
 ```
 
-In another terminal:
-
-```bash
-cd attack-node-router
-cp .env.example .env
-go run .
-```
-
 The worker's included scripts are intended for a Linux-like runtime. Host metrics use `/proc`, and command execution uses `/bin/sh` on Linux.
 
-### 6. Start the dashboard
+### 5. Start the dashboard
 
 ```bash
 cd dashboard
@@ -229,7 +210,7 @@ The current implementation skips the HMAC comparison when either the configured 
 
 ## Docker Workflows
 
-The backend Compose file is intended to build all three NestJS images from the current source:
+The backend Compose file is intended to build all five NestJS images from the current source:
 
 ```bash
 cd backend
@@ -247,17 +228,11 @@ docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-Run the published Go gateway and router images from the repository root:
-
-```bash
-docker compose -f docker-compose.go.yml up -d
-```
-
-Images published by the tag workflow are stored in Docker Hub repositories named `${DOCKERHUB_USERNAME}/loadservice-common`, `${DOCKERHUB_USERNAME}/loadservice-attack`, `${DOCKERHUB_USERNAME}/loadservice-payment`, `${DOCKERHUB_USERNAME}/loadservice-attack-node-router`, `${DOCKERHUB_USERNAME}/loadservice-api-gateway`, and `${DOCKERHUB_USERNAME}/loadservice-dashboard`.
+Images published by the tag workflow are stored in Docker Hub repositories named `${DOCKERHUB_USERNAME}/loadservice-common`, `${DOCKERHUB_USERNAME}/loadservice-attack`, `${DOCKERHUB_USERNAME}/loadservice-payment`, `${DOCKERHUB_USERNAME}/loadservice-gateway`, `${DOCKERHUB_USERNAME}/loadservice-node-router`, and `${DOCKERHUB_USERNAME}/loadservice-dashboard`.
 
 The tag workflow requires the GitHub repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`.
 
-The backend build uses a cache-mounted pnpm store and copies only the selected service bundle into the runtime image. The Go gateway and router use static binaries in `scratch` runtime images and receive their `.env`/route map at runtime. The dashboard uses an Nginx runtime image and generates `runtime-config.js` from runtime environment variables; the attack-node worker currently does not have a Dockerfile.
+The backend build uses a cache-mounted pnpm store and copies only the selected service bundle into the runtime image. The dashboard uses an Nginx runtime image and generates `runtime-config.js` from runtime environment variables; the attack-node worker currently does not have a Dockerfile.
 
 Each Docker context has a `.dockerignore` so local dependencies, build output, secrets, Git metadata, and documentation are not uploaded to the builder.
 
@@ -275,13 +250,9 @@ pnpm format:check
 pnpm test:browser:install
 pnpm test
 
-cd ../api-gateway
-go test ./...
-go build ./...
-
-cd ../attack-node-router
-go test ./...
-go build ./...
+cd ../backend
+pnpm build:gateway
+pnpm build:node-router
 
 cd ../attack-node-service
 go test ./...
@@ -290,7 +261,7 @@ go build ./...
 
 ## Troubleshooting
 
-- `502 upstream service unavailable`: update `api-gateway/config.json` and confirm each upstream is reachable from the gateway host or container.
+- `502 upstream service unavailable`: update `backend/apps/gateway/config.json` and confirm each upstream is reachable from the gateway host or container.
 - REST works but realtime does not: verify the three `VITE_*_SOCKET_URL` values include `/socket.io/common`, `/socket.io/attack`, and `/socket.io/payment` respectively.
 - No worker is selected: check the registered server address, router protocol/port, worker `/health`, and configured slot count.
 - Worker fails at startup: all Go services require a readable `.env`; the worker also requires a valid `commands.json` and RabbitMQ connection.
@@ -313,7 +284,5 @@ go build ./...
 
 - [Backend](backend/README.md)
 - [Dashboard](dashboard/README.md)
-- [API Gateway](api-gateway/README.md)
-- [Attack Node Router](attack-node-router/README.md)
 - [Attack Node Service](attack-node-service/README.md)
 - [Infrastructure](servers/README.md)

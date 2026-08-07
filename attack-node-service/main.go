@@ -160,7 +160,7 @@ func HandleAttack(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	// Lazy declaration, from attack-node-router/main.go:`bytes.NewReader(attackEventPayload)`
+	// Lazy declaration for the payload sent by the backend node-router service.
 	var rawAttackEventJsonString map[string]any
 	// Decode `raw` to map[string]any
 	if err := json.NewDecoder(request.Body).Decode(&rawAttackEventJsonString); err != nil {

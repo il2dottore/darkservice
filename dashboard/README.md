@@ -101,7 +101,7 @@ flowchart LR
     D -->|/payments| P[Payment :5000]
 ```
 
-The Go gateway proxies each Socket.IO transport path to its configured backend. Backend CORS must still allow the dashboard origin. Each socket URL contains both the transport path and namespace; the client derives both without hardcoded socket routes.
+The NestJS gateway proxies each Socket.IO transport path to its configured backend. Backend CORS must still allow the dashboard origin. Each socket URL contains both the transport path and namespace; the client derives both without hardcoded socket routes.
 
 ## Docker
 

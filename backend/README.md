@@ -1,6 +1,6 @@
 # LoadService Backend
 
-The LoadService backend is a NestJS monorepo with three independently runnable services: Common, Attack, and Payment. They share infrastructure libraries and conventions while keeping their HTTP APIs and PostgreSQL schemas separated.
+The LoadService backend is a NestJS monorepo with five independently runnable services: Common, Attack, Payment, Gateway, and Node Router. They share infrastructure libraries and conventions while keeping their HTTP APIs and PostgreSQL schemas separated.
 
 ## Project Map
 
@@ -9,6 +9,8 @@ The LoadService backend is a NestJS monorepo with three independently runnable s
 | `apps/common` | Identity, users, roles, permissions, plans, features, news, and tickets |
 | `apps/attack` | Benchmark lifecycle, methods, networks, servers, entitlements, and status events |
 | `apps/payment` | Payment records, VietQR generation, SePay webhook handling, and plan activation |
+| `apps/gateway` | REST and Socket.IO reverse proxy for the three domain services |
+| `apps/node-router` | RabbitMQ consumer that selects and dispatches attack nodes |
 | `libs/auth` | JWT strategy and authorization guards/decorators |
 | `libs/common` | Consistent HTTP response interceptor and exception filter |
 | `libs/config` | Namespaced environment configuration |
@@ -26,6 +28,8 @@ The LoadService backend is a NestJS monorepo with three independently runnable s
 | `common` | `3000` | `auth`, `users`, `roles`, `permissions`, `features`, `plans`, `news`, `tickets` | Socket.IO `/tickets` |
 | `attack` | `4000` | `attacks`, `methods`, `networks`, `servers` | Socket.IO `/events`; consumes `attack.updateStatus` |
 | `payment` | `5000` | `payments` | Socket.IO `/payments`; consumes and publishes payment events |
+| `gateway` | `8080` | Proxies configured `/api/v1/...` routes | Proxies `/socket.io/common`, `/socket.io/attack`, and `/socket.io/payment` |
+| `node-router` | — | — | Consumes `attack.fired`/`attack.cancel`; publishes failure status events |
 
 All regular REST endpoints have the `/api/v1` prefix. Swagger is available directly from each service at `/api-docs`.
 
@@ -64,6 +68,7 @@ Configuration groups in `.env`:
 | Group | Variables |
 |---|---|
 | Service URLs/ports | `COMMON_SERVICE_URL`, `ATTACK_SERVICE_URL`, `PAYMENT_SERVICE_URL`, `COMMON_PORT`, `ATTACK_PORT`, `PAYMENT_PORT` |
+| Gateway | `GATEWAY_PORT`, `PROXY_CONFIG` |
 | Browser access | `CORS_ORIGIN` |
 | Worker health | `ATTACK_NODE_PROTOCOL`, `ATTACK_NODE_PORT` |
 | Redis | `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` |
@@ -120,6 +125,8 @@ Start every service in a separate terminal:
 pnpm dev:common
 pnpm dev:attack
 pnpm dev:payment
+pnpm dev:gateway
+pnpm dev:node-router
 ```
 
 Build all backend applications through the repository helper:
@@ -132,6 +139,9 @@ Build only selected applications when needed:
 
 ```bash
 node dev-scripts/build.js common attack
+
+# Build the gateway only
+node dev-scripts/build.js gateway
 ```
 
 The package-level build scripts delegate to `dev-scripts/build.js`:
@@ -141,6 +151,8 @@ pnpm build
 pnpm run build:common
 pnpm run build:attack
 pnpm run build:payment
+pnpm run build:gateway
+pnpm run build:node-router
 ```
 
 The development scripts delegate to `dev-scripts/watch.js`:
@@ -150,6 +162,8 @@ pnpm dev
 pnpm run dev:common
 pnpm run dev:attack
 pnpm run dev:payment
+pnpm run dev:gateway
+pnpm run dev:node-router
 ```
 
 ## Main Flows
@@ -165,7 +179,7 @@ pnpm run dev:payment
 
 1. `POST /api/v1/attacks` validates plan duration/concurrency and method features using the Common service.
 2. The Attack service resolves plan-allowed servers, persists the attack, and publishes `attack.fired`.
-3. The external Go router selects a worker; the worker publishes `attack.updateStatus` events.
+3. The `node-router` service selects a worker; the worker publishes `attack.updateStatus` events.
 4. The Attack service persists status timestamps, releases matching Redis reservations, and emits `attack.status` on `/events`.
 5. Setting an attack to `CANCELLED` publishes `attack.cancel` for the router.
 
@@ -181,7 +195,7 @@ pnpm run dev:payment
 
 | Queue | Pattern | Producer | Consumer |
 |---|---|---|---|
-| `attack.events` | `attack.fired`, `attack.cancel` | Attack service | Go attack-node router |
+| `attack.events` | `attack.fired`, `attack.cancel` | Attack service | `node-router` service |
 | `attack.status.events` | `attack.updateStatus` | Router / worker | Attack service |
 | `payment.events` | `payment.created`, `payment.paid` | Payment service | Payment service event controller |
 
@@ -205,9 +219,9 @@ docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-The release workflow publishes `loadservice-common`, `loadservice-attack`, and `loadservice-payment` to Docker Hub. Set `DOCKERHUB_USERNAME` before using this Compose file.
+The release workflow publishes `loadservice-common`, `loadservice-attack`, `loadservice-payment`, `loadservice-gateway`, and `loadservice-node-router` to Docker Hub. Set `DOCKERHUB_USERNAME` before using this Compose file.
 
-Both Compose files expose `3000`, `4000`, and `5000` and read the same `.env`. Infrastructure is not included here; start `../servers/docker-compose.yml` separately.
+Both Compose files expose `3000`, `4000`, `5000`, and `8080` and read the same `.env`; `node-router` has no HTTP port. Infrastructure is not included here; start `../servers/docker-compose.yml` separately.
 
 ## Useful Checks
 
@@ -244,7 +258,7 @@ Database commands:
 ## Notes For Development
 
 - PostgreSQL is the source of truth; Redis is used for sessions, expiring tokens, health cache, and temporary slot keys.
-- Swagger endpoints are served directly by each NestJS application and are not listed in the Go gateway module map.
+- Swagger endpoints are served directly by the Common, Attack, and Payment applications; Gateway only proxies the configured REST and Socket.IO paths.
 - Service responses are wrapped by the global transform interceptor; account for the `data` envelope in service-to-service clients.
 - The SePay handler currently skips its HMAC comparison when either the secret or authorization header is absent; enforce authentication before exposing it.
 - The checked-in backend currently has no Jest test files, and its Jest root directory is invalid for the monorepo layout.

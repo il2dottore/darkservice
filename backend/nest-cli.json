@@ -44,6 +44,24 @@
       "compilerOptions": {
         "tsConfigPath": "apps/payment/tsconfig.app.json"
       }
+    },
+    "gateway": {
+      "type": "application",
+      "root": "apps/gateway",
+      "entryFile": "main",
+      "sourceRoot": "apps/gateway/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/gateway/tsconfig.app.json"
+      }
+    },
+    "node-router": {
+      "type": "application",
+      "root": "apps/node-router",
+      "entryFile": "main",
+      "sourceRoot": "apps/node-router/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/node-router/tsconfig.app.json"
+      }
     }
   }
 }

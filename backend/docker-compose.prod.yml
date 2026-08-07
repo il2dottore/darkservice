@@ -25,3 +25,25 @@ services:
     ports:
       - "5000:5000"
     restart: unless-stopped
+
+  gateway:
+    image: ${DOCKERHUB_USERNAME:?Set DOCKERHUB_USERNAME}/loadservice-gateway:latest
+    pull_policy: always
+    env_file:
+      - .env
+    environment:
+      PROXY_CONFIG: config.docker.json
+    ports:
+      - "8080:8080"
+    depends_on:
+      - common
+      - attack
+      - payment
+    restart: unless-stopped
+
+  node-router:
+    image: ${DOCKERHUB_USERNAME:?Set DOCKERHUB_USERNAME}/loadservice-node-router:latest
+    pull_policy: always
+    env_file:
+      - .env
+    restart: unless-stopped

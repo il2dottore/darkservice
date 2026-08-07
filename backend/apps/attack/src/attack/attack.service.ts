@@ -183,8 +183,8 @@ export class AttackService {
       throw new ForbiddenException('No servers available for your plan');
     }
 
-    // All attack credentials are inserted, except serverId because the flow haven't reach `attack-node-router` yet
-    // Also, the default status of attack is `QUEUED` so, it can be re-queued later if the attack-node-router fails to pick it up
+    // All attack credentials are inserted, except serverId because the flow hasn't reached `node-router` yet.
+    // The default status is `QUEUED`, so the job can be re-queued if node-router fails to pick it up.
     const attack = await this.attackRepository.insertOne(createAttackDto);
 
     // Reserve slot on Redis to prevent double processing
@@ -209,7 +209,7 @@ export class AttackService {
       ? await this.methodRepository.findOne({ id: attack.methodId })
       : null;
 
-    // Emit event to attack-node-router
+    // Emit event to node-router.
     await firstValueFrom(
       this.attackClient.emit('attack.fired', {
         ...attack,
@@ -246,7 +246,7 @@ export class AttackService {
     return null;
   }
 
-  // Update status and if user manually cancels attack, emit event to attack-node-router to cancel the attack.
+  // Update status and if user manually cancels attack, emit event to node-router to cancel the attack.
   async update(
     id: number,
     updateAttackDto: UpdateAttackDto,
@@ -258,7 +258,7 @@ export class AttackService {
     );
 
     // After doing that `normal ORM operation`, we wrote a specific logic for attack cancellation.
-    // The `attack-node-router` should stop the attack if it receives the cancel event.
+    // The `node-router` should stop the attack if it receives the cancel event.
     if (attack && updateAttackDto.status === 'CANCELLED') {
       await firstValueFrom(this.attackClient.emit('attack.cancel', { id }));
     }

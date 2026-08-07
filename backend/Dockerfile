@@ -25,5 +25,6 @@ RUN --mount=type=cache,id=loadservice-pnpm-prod,target=/root/.local/share/pnpm/s
     pnpm install --frozen-lockfile --prod
 
 COPY --from=builder /app/dist/apps/${SERVICE}/main.js ./main.js
+COPY --from=builder /app/apps/gateway/config*.json ./
 
 CMD ["node", "main.js"]

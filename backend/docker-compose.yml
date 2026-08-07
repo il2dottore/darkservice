@@ -34,3 +34,31 @@ services:
     ports:
       - "5000:5000"
     restart: unless-stopped
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: gateway
+    env_file:
+      - .env
+    environment:
+      PROXY_CONFIG: config.docker.json
+    ports:
+      - "8080:8080"
+    depends_on:
+      - common
+      - attack
+      - payment
+    restart: unless-stopped
+
+  node-router:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: node-router
+    env_file:
+      - .env
+    restart: unless-stopped

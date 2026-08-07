@@ -22,6 +22,8 @@ The currently discovered applications are:
 attack
 common
 payment
+gateway
+node-router
 ```
 
 ## Build Applications
@@ -46,7 +48,7 @@ npx nest build <application>
 
 The Nest CLI selects the target application's project and TypeScript configuration from `nest-cli.json`. The script stops immediately when one build fails.
 
-The package-level `pnpm build`, `pnpm run build:common`, `pnpm run build:attack`, and `pnpm run build:payment` scripts delegate to this helper.
+The package-level `pnpm build`, `pnpm run build:common`, `pnpm run build:attack`, `pnpm run build:payment`, `pnpm run build:gateway`, and `pnpm run build:node-router` scripts delegate to this helper.
 
 ## Watch Applications
 
@@ -86,6 +88,8 @@ node dev-scripts/build.js unknown-service
 node dev-scripts/build.js common
 node dev-scripts/build.js attack
 node dev-scripts/build.js payment
+node dev-scripts/build.js gateway
+node dev-scripts/build.js node-router
 ```
 
 To verify automatic discovery after editing the Nest configuration, run the script with an invalid target and inspect the printed application list.

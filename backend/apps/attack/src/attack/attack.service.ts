@@ -1,8 +1,5 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { ConflictError, ForbiddenError } from '@app/common';
 import { notInArray } from 'drizzle-orm';
 import { attackEntity } from '../entities/attack.entity';
 import { ClientProxy } from '@nestjs/microservices';
@@ -132,7 +129,7 @@ export class AttackService {
       limits.maxDuration > 0 &&
       createAttackDto.duration > limits.maxDuration
     ) {
-      throw new ForbiddenException(
+      throw new ForbiddenError(
         `Attack duration exceeds your plan limit of your plan: ${limits.maxDuration} seconds`,
       );
     }
@@ -154,7 +151,7 @@ export class AttackService {
       limits.maxConcurrents > 0 &&
       activeCount + queuedCount + scheduledCount >= limits.maxConcurrents
     ) {
-      throw new ForbiddenException(
+      throw new ForbiddenError(
         `You have reached your concurrent attack limit of your plan: ${limits.maxConcurrents} concurrents`,
       );
     }
@@ -166,7 +163,7 @@ export class AttackService {
         authorization,
       );
       if (missing.length) {
-        throw new ForbiddenException({
+        throw new ForbiddenError('Missing required plan features', {
           message: 'Missing required plan features',
           missingFeatures: missing,
         });
@@ -180,7 +177,7 @@ export class AttackService {
     const allowedServers =
       await this.serverService.getAllowedServers(featureIds);
     if (!allowedServers.length) {
-      throw new ForbiddenException('No servers available for your plan');
+      throw new ForbiddenError('No servers available for your plan');
     }
 
     // All attack credentials are inserted, except serverId because the flow hasn't reached `node-router` yet.
@@ -201,7 +198,7 @@ export class AttackService {
           failureReason: 'No available server slot',
         },
       );
-      throw new ConflictException('No available server slot');
+      throw new ConflictError('No available server slot');
     }
 
     // Get method details

@@ -35,23 +35,21 @@ export class TicketController {
 
   @Get()
   @ApiOperation({ summary: 'List tickets visible to the current user' })
-  async getAll(
+  getAll(
     @Query('scope') scope: string | undefined,
     @Req() request: UserPermissions,
   ) {
-    return this.ticketService.getAll(
-      await this.ticketService.getActor(request.user.sub),
-      scope === 'admin',
-    );
+    return this.ticketService
+      .getActor(request.user.sub)
+      .then((actor) => this.ticketService.getAll(actor, scope === 'admin'));
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a ticket and its replies' })
-  async getById(@Param('id') id: string, @Req() request: UserPermissions) {
-    return this.ticketService.getById(
-      Number(id),
-      await this.ticketService.getActor(request.user.sub),
-    );
+  getById(@Param('id') id: string, @Req() request: UserPermissions) {
+    return this.ticketService
+      .getActor(request.user.sub)
+      .then((actor) => this.ticketService.getById(Number(id), actor));
   }
 
   @Post()
@@ -62,70 +60,63 @@ export class TicketController {
 
   @Put(':id')
   @ApiOperation({ summary: 'Update a ticket (manager only)' })
-  async update(
+  update(
     @Param('id') id: string,
     @Body() dto: UpdateTicketDto,
     @Req() request: UserPermissions,
   ) {
-    return this.ticketService.update(
-      Number(id),
-      dto,
-      await this.ticketService.getActor(request.user.sub),
-    );
+    return this.ticketService
+      .getActor(request.user.sub)
+      .then((actor) => this.ticketService.update(Number(id), dto, actor));
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a ticket (manager only)' })
-  async delete(@Param('id') id: string, @Req() request: UserPermissions) {
-    return this.ticketService.remove(
-      Number(id),
-      await this.ticketService.getActor(request.user.sub),
-    );
+  delete(@Param('id') id: string, @Req() request: UserPermissions) {
+    return this.ticketService
+      .getActor(request.user.sub)
+      .then((actor) => this.ticketService.remove(Number(id), actor));
   }
 
   @Post(':id/claim')
   @ApiOperation({ summary: 'Claim an unassigned ticket' })
-  async claim(@Param('id') id: string, @Req() request: UserPermissions) {
-    return this.ticketService.claim(
-      Number(id),
-      await this.ticketService.getActor(request.user.sub),
-    );
+  claim(@Param('id') id: string, @Req() request: UserPermissions) {
+    return this.ticketService
+      .getActor(request.user.sub)
+      .then((actor) => this.ticketService.claim(Number(id), actor));
   }
 
   @Post(':id/release')
   @ApiOperation({ summary: 'Release an assigned ticket' })
-  async release(@Param('id') id: string, @Req() request: UserPermissions) {
-    return this.ticketService.release(
-      Number(id),
-      await this.ticketService.getActor(request.user.sub),
-    );
+  release(@Param('id') id: string, @Req() request: UserPermissions) {
+    return this.ticketService
+      .getActor(request.user.sub)
+      .then((actor) => this.ticketService.release(Number(id), actor));
   }
 
   @Post(':id/replies')
   @ApiOperation({ summary: 'Reply to a claimed ticket' })
-  async reply(
+  reply(
     @Param('id') id: string,
     @Body() dto: CreateReplyDto,
     @Req() request: UserPermissions,
   ) {
-    return this.ticketService.addReply(
-      Number(id),
-      dto,
-      await this.ticketService.getActor(request.user.sub),
-    );
+    return this.ticketService
+      .getActor(request.user.sub)
+      .then((actor) => this.ticketService.addReply(Number(id), dto, actor));
   }
 
   @Patch(':id/status')
   @ApiOperation({ summary: 'Change ticket status' })
-  async status(
+  status(
     @Param('id') id: string,
     @Body() dto: UpdateStatusDto,
     @Req() request: UserPermissions,
   ) {
-    return this.ticketService.updateStatus(
-      Number(id),
-      dto.status,
-      await this.ticketService.getActor(request.user.sub),
-    );
+    return this.ticketService
+      .getActor(request.user.sub)
+      .then((actor) =>
+        this.ticketService.updateStatus(Number(id), dto.status, actor),
+      );
   }
 }

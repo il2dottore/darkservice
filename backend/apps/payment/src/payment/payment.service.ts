@@ -1,10 +1,5 @@
-import {
-  Inject,
-  Injectable,
-  Logger,
-  UnauthorizedException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { BadRequestError, UnauthorizedError } from '@app/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { POSTGRES } from '@app/database/postgresql/postgresql.module';
@@ -30,7 +25,7 @@ export class PaymentService {
 
   async createPayment(userId: string, planId: number, amount: number) {
     if (!Number.isInteger(amount) || amount <= 0)
-      throw new BadRequestException('Invalid amount');
+      throw new BadRequestError('Invalid amount');
     await this.validatePlanPurchase(userId, planId);
     const transactionCode = `DS${Date.now()}${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
     const [payment] = await this.postgres
@@ -63,13 +58,15 @@ export class PaymentService {
       this.config.get<string>('COMMON_SERVICE_URL') ?? 'http://localhost:3000';
     const authorization = `Bearer ${await this.jwt.signAsync({ sub: userId })}`;
     const [plansResponse, userPlansResponse] = await Promise.all([
-      fetch(`${baseUrl}/api/v1/plans`),
+      fetch(`${baseUrl}/api/v1/plans`, {
+        headers: { authorization },
+      }),
       fetch(`${baseUrl}/api/v1/users/${userId}/plans`, {
         headers: { authorization },
       }),
     ]);
     if (!plansResponse.ok || !userPlansResponse.ok) {
-      throw new BadRequestException('Unable to validate current plan');
+      throw new BadRequestError('Unable to validate current plan');
     }
     const plansBody = (await plansResponse.json()) as {
       data?: Array<{
@@ -88,7 +85,7 @@ export class PaymentService {
       ? userPlansBody.data
       : [];
     if (!plans.length) {
-      throw new BadRequestException('Unable to validate current plan');
+      throw new BadRequestError('Unable to validate current plan');
     }
     const target = plans.find((plan) => plan.id === planId);
     const current = userPlans.find(
@@ -96,7 +93,7 @@ export class PaymentService {
     );
     const currentPlan = plans.find((plan) => plan.id === current?.planId);
     if (target && currentPlan && target.price < currentPlan.price) {
-      throw new BadRequestException(
+      throw new BadRequestError(
         'You cannot purchase a cheaper plan while your current plan is active',
       );
     }
@@ -108,7 +105,7 @@ export class PaymentService {
       .from(paymentEntity)
       .where(and(eq(paymentEntity.id, id), eq(paymentEntity.userId, userId)))
       .limit(1);
-    if (!payment) throw new BadRequestException('Payment not found');
+    if (!payment) throw new BadRequestError('Payment not found');
     this.logger.debug(
       `[PAYMENT] Retrieved payment ${id} user=${userId} status=${payment.status}`,
     );
@@ -156,7 +153,7 @@ export class PaymentService {
         ),
       )
       .returning();
-    if (!payment) throw new BadRequestException('Pending payment not found');
+    if (!payment) throw new BadRequestError('Pending payment not found');
     this.logger.log(`[PAYMENT] Cancelled payment ${id} user=${userId}`);
     return payment;
   }
@@ -202,7 +199,7 @@ export class PaymentService {
       const valid =
         received.length === expected.length &&
         timingSafeEqual(Buffer.from(received), Buffer.from(expected));
-      if (!valid) throw new UnauthorizedException('Invalid SePay signature');
+      if (!valid) throw new UnauthorizedError('Invalid SePay signature');
     }
 
     if (payload.transferType !== 'in') return { success: true, ignored: true };

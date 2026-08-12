@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ApiErrorDto } from '../dtos/api-response.dto';
+import { RuntimeException } from '../exceptions/runtime.exception';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -19,11 +20,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
 
     const isHttpException = exception instanceof HttpException;
+    const isRuntimeException = exception instanceof RuntimeException;
     const statusCode = isHttpException
       ? exception.getStatus()
-      : HttpStatus.INTERNAL_SERVER_ERROR;
+      : isRuntimeException
+        ? exception.statusCode
+        : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const exceptionResponse = isHttpException ? exception.getResponse() : null;
+    const exceptionResponse = isHttpException
+      ? exception.getResponse()
+      : isRuntimeException
+        ? (exception.response ?? exception.message)
+        : null;
     const message = this.extractMessage(exceptionResponse, exception);
     const errors = this.extractValidationErrors(exceptionResponse);
 

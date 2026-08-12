@@ -1,9 +1,5 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { ConflictError, ForbiddenError, NotFoundError } from '@app/common';
 import { CreateReplyDto } from '../dtos/create-reply.dto';
 import { CreateTicketDto } from '../dtos/create-ticket.dto';
 import { UpdateTicketDto } from '../dtos/update-ticket.dto';
@@ -41,19 +37,19 @@ export class TicketService {
   }
   private async getVisible(id: number, actor: Actor) {
     const ticket = await this.repository.findOne({ id });
-    if (!ticket) throw new NotFoundException('Ticket not found');
+    if (!ticket) throw new NotFoundError('Ticket not found');
     if (
       !this.can(actor, PermissionEnum.TICKET_REPLY) &&
       !this.can(actor, PermissionEnum.TICKET_MANAGE) &&
       ticket.senderId !== actor.id
     )
-      throw new ForbiddenException();
+      throw new ForbiddenError('Forbidden');
     return ticket;
   }
 
   private ensureMutable(status: TicketStatusValue) {
     if (status === 'SOLVED' || status === 'CLOSED') {
-      throw new ConflictException('This ticket is no longer mutable');
+      throw new ConflictError('This ticket is no longer mutable');
     }
   }
 
@@ -65,7 +61,7 @@ export class TicketService {
       !this.can(actor, PermissionEnum.TICKET_REPLY) &&
       !this.can(actor, PermissionEnum.TICKET_MANAGE)
     ) {
-      throw new ForbiddenException();
+      throw new ForbiddenError('Forbidden');
     }
     return this.repository.findVisible(
       actor.id,
@@ -93,13 +89,13 @@ export class TicketService {
       !this.can(actor, PermissionEnum.TICKET_MANAGE) &&
       current.senderId !== actor.id
     ) {
-      throw new ForbiddenException();
+      throw new ForbiddenError('Forbidden');
     }
     const ticket = await this.repository.updateOne(
       { id },
       { ...dto, updatedAt: new Date() },
     );
-    if (!ticket) throw new NotFoundException('Ticket not found');
+    if (!ticket) throw new NotFoundError('Ticket not found');
     this.gateway.emitUpdated(ticket.id, 'changed');
     return ticket;
   }
@@ -111,10 +107,10 @@ export class TicketService {
       !this.can(actor, PermissionEnum.TICKET_MANAGE) &&
       current.senderId !== actor.id
     ) {
-      throw new ForbiddenException();
+      throw new ForbiddenError('Forbidden');
     }
     const ticket = await this.repository.deleteOne({ id });
-    if (!ticket) throw new NotFoundException('Ticket not found');
+    if (!ticket) throw new NotFoundError('Ticket not found');
     return ticket;
   }
 
@@ -123,14 +119,12 @@ export class TicketService {
       !this.can(actor, PermissionEnum.TICKET_REPLY) &&
       !this.can(actor, PermissionEnum.TICKET_MANAGE)
     )
-      throw new ForbiddenException();
+      throw new ForbiddenError('Forbidden');
     const current = await this.getVisible(id, actor);
     this.ensureMutable(current.status);
     const ticket = await this.repository.claim(id, actor.id);
     if (!ticket)
-      throw new ConflictException(
-        'Ticket is already claimed or cannot be claimed',
-      );
+      throw new ConflictError('Ticket is already claimed or cannot be claimed');
     this.gateway.emitUpdated(ticket.id, 'changed');
     return ticket;
   }
@@ -140,7 +134,7 @@ export class TicketService {
       !this.can(actor, PermissionEnum.TICKET_REPLY) &&
       !this.can(actor, PermissionEnum.TICKET_MANAGE)
     )
-      throw new ForbiddenException();
+      throw new ForbiddenError('Forbidden');
     const current = await this.getVisible(id, actor);
     this.ensureMutable(current.status);
     const ticket = await this.repository.release(
@@ -149,7 +143,7 @@ export class TicketService {
       this.can(actor, PermissionEnum.TICKET_MANAGE),
     );
     if (!ticket)
-      throw new ForbiddenException(
+      throw new ForbiddenError(
         'Only the assigned support can release this ticket',
       );
     this.gateway.emitUpdated(ticket.id, 'changed');
@@ -165,12 +159,12 @@ export class TicketService {
       (!this.can(actor, PermissionEnum.TICKET_REPLY) ||
         ticket.assignedSupportId !== actor.id)
     )
-      throw new ForbiddenException();
+      throw new ForbiddenError('Forbidden');
     const updated = await this.repository.updateOne(
       { id },
       { status, updatedAt: new Date() },
     );
-    if (!updated) throw new NotFoundException('Ticket not found');
+    if (!updated) throw new NotFoundError('Ticket not found');
     this.gateway.emitUpdated(updated.id, 'changed');
     return updated;
   }
@@ -187,7 +181,7 @@ export class TicketService {
       !this.can(actor, PermissionEnum.TICKET_MANAGE) &&
       !isAssignedSupport
     )
-      throw new ForbiddenException();
+      throw new ForbiddenError('Forbidden');
     const reply = await this.repository.addReply(id, actor.id, dto.content);
     this.gateway.emitUpdated(id, 'replied');
     return reply;

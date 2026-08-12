@@ -9,7 +9,6 @@ import {
   Post,
   Req,
   Res,
-  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
@@ -104,19 +103,15 @@ export class AuthController {
       (request.ip as string) ||
       '';
     const userAgent = (request.headers['user-agent'] as string) || '';
-    try {
-      return await this.authService.login(loginDto, { ipAddress, userAgent });
-    } catch (error) {
-      throw new UnauthorizedException((error as Error).message);
-    }
+    return this.authService.login(loginDto, { ipAddress, userAgent });
   }
 
   @ApiOperation({
     summary: 'Register a new user account',
   })
   @Post('register')
-  async register(@Body() createUserDto: CreateUserDto) {
-    return await this.authService.register(createUserDto);
+  register(@Body() createUserDto: CreateUserDto) {
+    return this.authService.register(createUserDto);
   }
 
   @Get('verify-email')
@@ -144,21 +139,21 @@ export class AuthController {
 
   @ApiOperation({ summary: 'Issue a new access token for an active session' })
   @Post('refresh')
-  async refresh(@Body() { refreshToken }: RefreshTokenDto) {
+  refresh(@Body() { refreshToken }: RefreshTokenDto) {
     return this.authService.refresh(refreshToken);
   }
 
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @Get('me')
-  async profile(@Req() request: { user: { sub: string } }) {
+  profile(@Req() request: { user: { sub: string } }) {
     return this.authService.getProfile(request.user.sub);
   }
 
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @Patch('me')
-  async updateProfile(
+  updateProfile(
     @Req() request: { user: { sub: string } },
     @Body() updateUserDto: UpdateUserDto,
   ) {
@@ -184,8 +179,8 @@ export class AuthController {
   @Get('sessions/:userId')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  async listSessions(@Param('userId') userId: string) {
-    return await this.authService.listSessions(userId);
+  listSessions(@Param('userId') userId: string) {
+    return this.authService.listSessions(userId);
   }
 
   @ApiOperation({
@@ -199,7 +194,8 @@ export class AuthController {
     @Body() body: { userId: string },
     @Req() request: { user: { sub: string; sessionId: string } },
   ) {
-    await this.authService.logoutAll(body.userId, request.user.sessionId);
-    return { success: true };
+    return this.authService
+      .logoutAll(body.userId, request.user.sessionId)
+      .then(() => ({ success: true }));
   }
 }

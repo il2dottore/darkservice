@@ -3,10 +3,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { fetchPlans } from '@/services/admin/plans/plan.service'
 import { cancelPayment } from '@/services/payment/payment.service'
+import { connectSocket } from '@/services/realtime/socket-endpoint'
 import { toast } from 'sonner'
 import { api } from '@/lib/axios'
 import { appConfig } from '@/constants/config'
-import { connectSocket } from '@/services/realtime/socket-endpoint'
 import { Button } from '@/components/ui/button'
 
 export const Route = createFileRoute('/_authenticated/payment/$paymentId')({
@@ -67,7 +67,10 @@ function PaymentPage() {
     previousStatus.current = payment?.status
   }, [payment?.status])
   useEffect(() => {
-    if (!payment?.createdAt) return
+    if (!payment?.createdAt || payment.status !== 'pending') {
+      setRemaining(0)
+      return
+    }
     const update = () =>
       setRemaining(
         Math.max(
@@ -76,7 +79,7 @@ function PaymentPage() {
             (new Date(payment.createdAt).getTime() +
               15 * 60 * 1000 -
               Date.now()) /
-            1000
+              1000
           )
         )
       )
@@ -87,7 +90,11 @@ function PaymentPage() {
   return (
     <main className='mx-auto w-full max-w-5xl p-8'>
       <h1 className='text-2xl font-bold'>
-        {payment?.status === 'paid' ? 'Payment successful' : 'Complete payment'}
+        {payment?.status === 'paid'
+          ? 'Payment successful'
+          : payment?.status === 'cancelled'
+            ? 'Payment cancelled'
+            : 'Complete payment'}
       </h1>
       <div className='grid gap-6 md:grid-cols-2'>
         <section className='rounded-lg border p-6'>
@@ -138,7 +145,7 @@ function PaymentPage() {
         </section>
         <section className='flex flex-col items-center gap-4 rounded-lg border p-6 text-center'>
           <h2 className='text-lg font-semibold'>Scan to pay</h2>
-          {payment?.status !== 'paid' && (
+          {payment?.status === 'pending' && (
             <>
               <img
                 src={payment?.qrCodeUrl ?? search.qr}

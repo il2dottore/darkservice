@@ -1,10 +1,11 @@
+import { Injectable } from '@nestjs/common';
 import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+  BadRequestError,
+  ConflictError,
+  NotFoundError,
+  RuntimeException,
+  UnauthorizedError,
+} from '@app/common';
 import { plainToInstance } from 'class-transformer';
 import { LoginDto } from './dtos/requests/login.dto';
 import { JwtModuleOptions, JwtService } from '@nestjs/jwt';
@@ -63,7 +64,7 @@ export class AuthService {
       : await this.userService.findOneByUsername(identifier);
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundError('User not found');
     }
 
     const isPasswordValid = await argon2.verify(
@@ -72,7 +73,7 @@ export class AuthService {
     );
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid password');
+      throw new UnauthorizedError('Invalid password');
     }
 
     return this.issueSession(user, deviceInfo);
@@ -83,14 +84,14 @@ export class AuthService {
       createUserDto.username,
     );
     if (existingUsername) {
-      throw new ConflictException('Username already exists');
+      throw new ConflictError('Username already exists');
     }
 
     const existingEmail = await this.userService.findOneByEmail(
       createUserDto.email,
     );
     if (existingEmail) {
-      throw new ConflictException('Email already exists');
+      throw new ConflictError('Email already exists');
     }
 
     const user = await this.userService.create(createUserDto);
@@ -111,9 +112,7 @@ export class AuthService {
   async verifyEmail(token: string) {
     const userId = await this.redis.get(`email-verification:${token}`);
     if (!userId)
-      throw new UnauthorizedException(
-        'Verification link is invalid or expired',
-      );
+      throw new UnauthorizedError('Verification link is invalid or expired');
     await this.userService.verifyEmail(userId);
     await this.redis.del(`email-verification:${token}`);
     return { success: true };
@@ -132,7 +131,7 @@ export class AuthService {
   async resetPassword(token: string, password: string) {
     const userId = await this.redis.get(`password-reset:${token}`);
     if (!userId)
-      throw new UnauthorizedException('Reset token is invalid or expired');
+      throw new UnauthorizedError('Reset token is invalid or expired');
     await this.userService.updatePassword(userId, password);
     await this.redis.del(`password-reset:${token}`);
     return { success: true };
@@ -147,22 +146,20 @@ export class AuthService {
         secret: this.configService.get<string>('jwt.refreshSecret'),
       });
       if (!payload.sub || !payload.sessionId)
-        throw new UnauthorizedException('Invalid refresh token');
+        throw new UnauthorizedError('Invalid refresh token');
 
       const sessionKey = `session:${payload.sub}:${payload.sessionId}`;
       const sessionData = await this.redis.getJson<SessionData>(sessionKey);
       const stored = sessionData;
-      if (!stored) throw new UnauthorizedException('Session has expired');
+      if (!stored) throw new UnauthorizedError('Session has expired');
 
       const tokenHash = this.hashToken(refreshToken);
       if (stored.refreshTokenHash !== tokenHash) {
-        throw new UnauthorizedException(
-          'Refresh token revoked or already used',
-        );
+        throw new UnauthorizedError('Refresh token revoked or already used');
       }
 
       const user = await this.userService.getById(payload.sub);
-      if (!user) throw new UnauthorizedException('User no longer exists');
+      if (!user) throw new UnauthorizedError('User no longer exists');
 
       return this.issueSession(
         user,
@@ -174,8 +171,8 @@ export class AuthService {
         stored,
       );
     } catch (error) {
-      if (error instanceof UnauthorizedException) throw error;
-      throw new UnauthorizedException('Invalid or expired refresh token');
+      if (error instanceof RuntimeException) throw error;
+      throw new UnauthorizedError('Invalid or expired refresh token');
     }
   }
 
@@ -208,7 +205,7 @@ export class AuthService {
 
   async logout(userId: string, sessionId: string) {
     if (!userId || !sessionId) {
-      throw new BadRequestException('userId and sessionId are required');
+      throw new BadRequestError('userId and sessionId are required');
     }
 
     await this.redis
@@ -325,7 +322,7 @@ export class AuthService {
     const clientId = this.configService.get<string>('google.clientId');
     const callback = this.configService.get<string>('google.callbackUrl');
     if (!clientId || !callback)
-      throw new BadRequestException('Google OAuth is not configured');
+      throw new BadRequestError('Google OAuth is not configured');
     const state = userId
       ? this.jwtService.sign({ sub: userId }, { expiresIn: '10m' })
       : '';
@@ -346,7 +343,7 @@ export class AuthService {
     const clientSecret = this.configService.get<string>('google.clientSecret');
     const redirectUri = this.configService.get<string>('google.callbackUrl');
     if (!clientId || !clientSecret || !redirectUri)
-      throw new BadRequestException('Google OAuth is not configured');
+      throw new BadRequestError('Google OAuth is not configured');
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
@@ -359,14 +356,14 @@ export class AuthService {
       }),
     });
     if (!tokenResponse.ok)
-      throw new UnauthorizedException('Google authorization failed');
+      throw new UnauthorizedError('Google authorization failed');
     const tokens = (await tokenResponse.json()) as { access_token?: string };
     const profileResponse = await fetch(
       'https://openidconnect.googleapis.com/v1/userinfo',
       { headers: { authorization: `Bearer ${tokens.access_token}` } },
     );
     if (!profileResponse.ok)
-      throw new UnauthorizedException('Unable to read Google profile');
+      throw new UnauthorizedError('Unable to read Google profile');
     const profile = (await profileResponse.json()) as {
       sub: string;
       email: string;
@@ -377,10 +374,10 @@ export class AuthService {
         )
       : await this.userService.findOneByGoogleId(profile.sub);
     if (state) {
-      if (!user) throw new UnauthorizedException('Account no longer exists');
+      if (!user) throw new UnauthorizedError('Account no longer exists');
       const linked = await this.userService.findOneByGoogleId(profile.sub);
       if (linked && linked.id !== user.id)
-        throw new ConflictException('Google account is already linked');
+        throw new ConflictError('Google account is already linked');
       user = await this.userService.linkGoogleAccount(
         user.id,
         profile.sub,
@@ -390,15 +387,14 @@ export class AuthService {
       user = await this.userService.findOneByEmail(profile.email);
     }
     if (!user)
-      throw new UnauthorizedException('No account matches this Google account');
+      throw new UnauthorizedError('No account matches this Google account');
     if (!(await this.userService.getGoogleAccount(user.id))) {
       user = await this.userService.linkGoogleAccount(
         user.id,
         profile.sub,
         profile.email,
       );
-      if (!user)
-        throw new UnauthorizedException('Unable to link Google account');
+      if (!user) throw new UnauthorizedError('Unable to link Google account');
     }
     const session = await this.issueSession(user);
     return session;

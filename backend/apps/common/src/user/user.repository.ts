@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestError, NotFoundError } from '@app/common';
 import { POSTGRES } from '@app/database/postgresql/postgresql.module';
 import { BasePostgresRepository } from '@app/database/postgresql/repository/base.repository';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js/driver';
@@ -186,7 +186,7 @@ export class UserRepository extends BasePostgresRepository<typeof userEntity> {
       .from(planEntity)
       .where(eq(planEntity.id, planId))
       .limit(1);
-    if (!plan) throw new Error(`Plan ${planId} not found`);
+    if (!plan) throw new NotFoundError(`Plan ${planId} not found`);
     const [current] = await this.postgres
       .select({ plan: planEntity, assignment: usersPlansTable })
       .from(usersPlansTable)
@@ -198,7 +198,7 @@ export class UserRepository extends BasePostgresRepository<typeof userEntity> {
       current?.assignment.expirationDate > now &&
       plan.price < current.plan.price
     ) {
-      throw new BadRequestException(
+      throw new BadRequestError(
         'You cannot purchase a cheaper plan while your current plan is active',
       );
     }

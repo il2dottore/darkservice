@@ -1,4 +1,5 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { NotFoundError, UnauthorizedError } from '@app/common';
 import * as argon2 from 'argon2';
 import { UserRepository } from './user.repository';
 import { UserDetails } from './dtos/responses/user-details';
@@ -17,7 +18,7 @@ export class UserService {
     if (!rows.length) {
       // A valid JWT can outlive the user it belongs to (for example after a
       // database reset). Treat that token as invalid instead of returning 500.
-      throw new UnauthorizedException('User session is no longer valid');
+      throw new UnauthorizedError('User session is no longer valid');
     }
 
     const user = rows[0].users;
@@ -100,7 +101,7 @@ export class UserService {
   async getById(id: string): Promise<User | null> {
     const user = await this.userRepository.findOne({ id: id });
     if (!user) {
-      throw new Error('User not found');
+      throw new NotFoundError('User not found');
     }
     return user;
   }
@@ -164,7 +165,7 @@ export class UserService {
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User | null> {
     const user = await this.userRepository.updateOne({ id: id }, updateUserDto);
     if (!user) {
-      throw new Error('User not found');
+      throw new NotFoundError('User not found');
     }
     return user;
   }
@@ -183,7 +184,7 @@ export class UserService {
   async delete(id: string): Promise<User | null> {
     const user = await this.userRepository.deleteOne({ id: id });
     if (!user) {
-      throw new Error('User not found');
+      throw new NotFoundError('User not found');
     }
     return user;
   }

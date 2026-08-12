@@ -23,31 +23,27 @@ export class AttackController {
 
   @ApiOperation({ summary: 'Get all attacks' })
   @Get()
-  async getAll(@Req() request: { user: { sub: string } }) {
-    try {
-      return await this.attackService.getAll(request.user.sub);
-    } catch (exception) {
-      console.log(exception);
-    }
+  getAll(@Req() request: { user: { sub: string } }) {
+    return this.attackService.getAll(request.user.sub);
   }
 
   @ApiOperation({ summary: 'Get dashboard attack and server statistics' })
   @Get('statistics')
-  async getStatistics() {
+  getStatistics() {
     return this.attackService.getStatistics();
   }
 
   @ApiOperation({ summary: 'Clear completed attack history' })
   @Delete('history')
   @Role('ADMINISTRATOR')
-  async clearHistory() {
+  clearHistory() {
     return this.attackService.clearHistory();
   }
 
   @ApiOperation({ summary: 'Get attack by ID' })
   @Get(':id')
-  async getById(@Param('id') id: string) {
-    return await this.attackService.getById(Number(id));
+  getById(@Param('id') id: string) {
+    return this.attackService.getById(Number(id));
   }
 
   @ApiOperation({ summary: 'Create attack' })
@@ -57,7 +53,7 @@ export class AttackController {
     request: { user: { sub: string }; headers: { authorization?: string } },
     @Body() createAttackDto: CreateAttackDto,
   ) {
-    return await this.attackService.create(
+    return this.attackService.create(
       { ...createAttackDto, userId: request.user.sub },
       request.headers.authorization ?? '',
     );
@@ -69,12 +65,12 @@ export class AttackController {
     @Param('id') id: string,
     @Body() updateAttackDto: UpdateAttackDto,
   ) {
-    return await this.attackService.update(Number(id), updateAttackDto);
+    return this.attackService.update(Number(id), updateAttackDto);
   }
 
   @ApiOperation({ summary: 'Delete attack' })
   @Delete(':id')
-  async delete(@Param('id') id: string) {
-    return await this.attackService.delete(Number(id));
+  delete(@Param('id') id: string) {
+    return this.attackService.delete(Number(id));
   }
 }

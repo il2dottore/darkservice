@@ -4,10 +4,7 @@ import {
   Delete,
   Get,
   HttpCode,
-  HttpException,
   HttpStatus,
-  InternalServerErrorException,
-  NotFoundException,
   Param,
   Post,
   Put,
@@ -54,26 +51,18 @@ export class UserController {
     },
   })
   @Get(':id/allowed-servers')
-  async getAllowedServers(@Param('id') userId: string): Promise<any> {
-    try {
-      return await this.userService.getAllowedServers(userId);
-    } catch (error) {
-      this.rethrowAsHttpException(error);
-    }
+  getAllowedServers(@Param('id') userId: string): Promise<any> {
+    return this.userService.getAllowedServers(userId);
   }
 
   @ApiOperation({ summary: 'Get all users' })
   @ApiOkResponse({ type: UserResponse, isArray: true })
   @Get()
-  async getAllUsers(
+  getAllUsers(
     @Query('perPage') perPage: number = 5,
     @Query('page') page: number = 1,
   ) {
-    try {
-      return await this.userService.getAll(+perPage, +page);
-    } catch (error) {
-      this.rethrowAsHttpException(error);
-    }
+    return this.userService.getAll(+perPage, +page);
   }
 
   @ApiOperation({ summary: 'Get user details data by ID' })
@@ -81,40 +70,26 @@ export class UserController {
   @Role('ADMINISTRATOR')
   @UseGuards(ResourceOwnerGuard)
   @Get(':id/details')
-  async getUserDetailsById(@Param('id') id: string) {
-    try {
-      return await this.userService.getUserDetailsById(id);
-    } catch (error) {
-      this.rethrowAsHttpException(error, {
-        'User details not found': HttpStatus.NOT_FOUND,
-      });
-    }
+  getUserDetailsById(@Param('id') id: string) {
+    return this.userService.getUserDetailsById(id);
   }
 
   @ApiOperation({ summary: 'Get all user details data' })
   @ApiOkResponse({ type: UserDetails, isArray: true })
   @Get('details')
-  async getUserDetails(
+  getUserDetails(
     @Query('perPage') perPage: number = 5,
     @Query('page') page: number = 1,
   ) {
-    try {
-      return await this.userService.getAllUsersDetails(+perPage, +page);
-    } catch (error) {
-      this.rethrowAsHttpException(error);
-    }
+    return this.userService.getAllUsersDetails(+perPage, +page);
   }
 
   @ApiOperation({ summary: 'Get total users count' })
   @ApiOkResponse({ description: 'Total users count' })
   @Get('count')
   async countAllUsers() {
-    try {
-      const totalUsers = await this.userService.countAll();
-      return { count: totalUsers };
-    } catch (error) {
-      this.rethrowAsHttpException(error);
-    }
+    const totalUsers = await this.userService.countAll();
+    return { count: totalUsers };
   }
 
   @ApiOperation({ summary: 'Get user by ID' })
@@ -122,26 +97,16 @@ export class UserController {
   @Get(':id')
   @Role('ADMINISTRATOR')
   @UseGuards(ResourceOwnerGuard)
-  async getUserById(@Param('id') id: string) {
-    try {
-      return await this.userService.getById(id);
-    } catch (error) {
-      this.rethrowAsHttpException(error, {
-        'User not found': HttpStatus.NOT_FOUND,
-      });
-    }
+  getUserById(@Param('id') id: string) {
+    return this.userService.getById(id);
   }
 
   @ApiOperation({ summary: 'Create user' })
   @ApiCreatedResponse({ type: UserResponse })
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() createUserDto: CreateUserDto) {
-    try {
-      return await this.userService.create(createUserDto);
-    } catch (error) {
-      this.rethrowAsHttpException(error);
-    }
+  create(@Body() createUserDto: CreateUserDto) {
+    return this.userService.create(createUserDto);
   }
 
   @ApiOperation({ summary: 'Update user' })
@@ -149,14 +114,8 @@ export class UserController {
   @Put(':id')
   @Role('ADMINISTRATOR')
   @UseGuards(ResourceOwnerGuard)
-  async update(@Body() updateUserDto: UpdateUserDto, @Param('id') id: string) {
-    try {
-      return await this.userService.update(id, updateUserDto);
-    } catch (error) {
-      this.rethrowAsHttpException(error, {
-        'User not found': HttpStatus.NOT_FOUND,
-      });
-    }
+  update(@Body() updateUserDto: UpdateUserDto, @Param('id') id: string) {
+    return this.userService.update(id, updateUserDto);
   }
 
   @ApiOperation({ summary: 'Delete user' })
@@ -164,45 +123,39 @@ export class UserController {
   @Delete(':id')
   @Role('ADMINISTRATOR')
   @UseGuards(ResourceOwnerGuard)
-  async delete(@Param() deleteUserDto: DeleteUserDto) {
-    try {
-      return await this.userService.delete(deleteUserDto.id);
-    } catch (error) {
-      this.rethrowAsHttpException(error, {
-        'User not found': HttpStatus.NOT_FOUND,
-      });
-    }
+  delete(@Param() deleteUserDto: DeleteUserDto) {
+    return this.userService.delete(deleteUserDto.id);
   }
 
   @ApiOperation({ summary: 'Assign role to user' })
   @Post(':userId/roles/:roleKey')
-  async assignRole(
+  assignRole(
     @Param('userId') userId: string,
     @Param('roleKey') roleKey: string,
   ) {
-    return await this.userService.assignRole(userId, roleKey);
+    return this.userService.assignRole(userId, roleKey);
   }
 
   @ApiOperation({ summary: 'Remove role from user' })
   @Delete(':userId/roles/:roleKey')
-  async removeRole(
+  removeRole(
     @Param('userId') userId: string,
     @Param('roleKey') roleKey: string,
   ) {
-    return await this.userService.removeRole(userId, roleKey);
+    return this.userService.removeRole(userId, roleKey);
   }
 
   @ApiOperation({ summary: 'List plans of a user' })
   @ApiParam({ name: 'id', format: 'uuid' })
   @Get(':id/plans')
-  async getPlans(@Param('id') id: string) {
+  getPlans(@Param('id') id: string) {
     return this.userService.getPlans(id);
   }
 
   @ApiOperation({ summary: 'Add or replace a user plan' })
   @ApiParam({ name: 'id', format: 'uuid' })
   @Post(':id/plans')
-  async addPlan(
+  addPlan(
     @Param('id') id: string,
     @Body() body: { planId: number; expirationDate?: string },
   ) {
@@ -215,7 +168,7 @@ export class UserController {
 
   @ApiOperation({ summary: 'Update a user plan' })
   @Put(':id/plans/:planId')
-  async updatePlan(
+  updatePlan(
     @Param('id') id: string,
     @Param('planId') planId: string,
     @Body() body: { expirationDate: string },
@@ -229,28 +182,7 @@ export class UserController {
 
   @ApiOperation({ summary: 'Remove a user plan' })
   @Delete(':id/plans/:planId')
-  async removePlan(@Param('id') id: string, @Param('planId') planId: string) {
+  removePlan(@Param('id') id: string, @Param('planId') planId: string) {
     return this.userService.removePlan(id, Number(planId));
-  }
-
-  private rethrowAsHttpException(
-    error: unknown,
-    statusMap: Record<string, HttpStatus> = {},
-  ): never {
-    if (error instanceof HttpException) {
-      throw error;
-    }
-
-    if (error instanceof Error) {
-      const status = statusMap[error.message];
-
-      if (status === HttpStatus.NOT_FOUND) {
-        throw new NotFoundException(error.message);
-      }
-
-      throw new InternalServerErrorException(error.message);
-    }
-
-    throw new InternalServerErrorException('Internal server error');
   }
 }
